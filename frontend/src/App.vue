@@ -41,9 +41,12 @@ function pushRecent(url, f, name) {
   if (!title) {
     try { title = decodeURIComponent(url.split('?')[0].split('/').pop()) || '文档' } catch { title = '文档' }
   }
+  // DS 最近面板按 format 字段选图标（img-format-<扩展名>），缺了就不显示图标
+  const m = title.toLowerCase().match(/\.([a-z0-9]+)/)
+  const format = m ? m[1] : ''
   const entry = f
-    ? { url: window.location.origin + '/?f=' + f, title, folder: '本机' }
-    : { url: window.location.origin + '/?url=' + encodeURIComponent(url), title, folder: '本机' }
+    ? { url: window.location.origin + '/?f=' + f, title, folder: '本机', format }
+    : { url: window.location.origin + '/?url=' + encodeURIComponent(url), title, folder: '本机', format }
   const list = [entry, ...getRecent().filter((it) => it.url !== entry.url)]
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 8))) } catch {}
 }
