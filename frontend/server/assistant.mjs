@@ -48,7 +48,7 @@ mkdirSync(UPLOAD_DIR, { recursive: true })
 const DOC_PUBLIC_ORIGIN = (process.env.DOC_PUBLIC_ORIGIN || '').replace(/\/+$/, '')
 
 const PORT = Number(process.env.ASSISTANT_PORT || 3001)
-const DSH_URL = (process.env.DSH_URL || 'http://127.0.0.1:3080').trim()
+const DSH_URL = (process.env.DSH_URL || '').trim()
 // 剥掉用户粘贴时可能带上的 /v1 或 /v1beta1 /v2 /openai 这种"版本尾巴"，
 // 让拼路径时只拼一处 /v1/chat/completions，避免出现 /v1/v1/chat/completions 双 /v1。
 function stripVersionTail(url) {

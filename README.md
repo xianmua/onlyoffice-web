@@ -2,6 +2,19 @@
 
 一体化 Docker 镜像，包含前端编辑器 + OnlyOffice Document Server，内置 AI 助手（直接改写文档）。
 
+## ✨ 相比原生 OnlyOffice 改了什么
+
+- **AI 助手侧边栏**：直连任意 OpenAI 兼容 API（DeepSeek/GLM 等），回复解析成指令**直接写入正在编辑的文档**（插入、替换、格式化）；点赞过的回复会记住，相似问题秒回；面板里可改 API 地址 / Key / 模型 / 提示词，即时生效
+- **文件菜单补全**：解锁 DS 网页版隐藏的原生「打开...」（弹系统文件对话框选本地 docx/xlsx/pptx），「新建」一键生成空白文档
+- **干净的访问地址**：本地文档用短链 `/?f=<id>` 打开，不暴露内部代理 URL；远程文档用 `/?url=<地址>`
+- **单进程单端口**：前端 + AI 后端 + 插件全部收进 8090 一个端口，OnlyOffice(8089) 仅内部通信
+- **极简界面**：移除 DS 自带的一堆插件，只留 AI 助手
+- **一键打包**：`build.sh` 双平台——Docker 一体化镜像，或 Windows 下 Bun 编译成**单个 exe**（零运行时依赖）
+
+| AI 助手直接改写文档 | 原生文件菜单「新建 / 打开」 |
+| --- | --- |
+| ![AI 助手](frontend/public/assign/ai.png) | ![文件菜单](frontend/public/assign/new.png) |
+
 ## 🚀 快速部署（Docker 方式）
 
 拉取项目后，**无需手动构建前端**——Dockerfile 采用多阶段构建，`docker build` 时会自动执行 `npm install` 和 `npm run build`。
