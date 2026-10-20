@@ -1,6 +1,6 @@
 # OnlyOffice 极简在线编辑器
 
-一体化 Docker 镜像，包含前端编辑器 + OnlyOffice Document Server。
+一体化 Docker 镜像，包含前端编辑器 + OnlyOffice Document Server，内置 AI 助手（直接改写文档）。
 
 ## 🚀 快速部署（Docker 方式）
 
@@ -27,12 +27,6 @@ docker load -i onlyoffice-editor.tar.gz
 docker run -d -p 8090:8090 -p 8089:80 --name onlyoffice onlyoffice-editor
 ```
 
-导出镜像命令（在本机执行）：
-
-```bash
-docker save onlyoffice-editor | gzip > onlyoffice-editor.tar.gz
-```
-
 ## 💻 本地开发（不用 Docker 跑前端）
 
 只需 Docker 跑 OnlyOffice，前端用 Vite 热更新调试：
@@ -55,8 +49,10 @@ http://localhost:8090?url=在线文档地址
 
 **示例：**
 ```
-http://localhost:8090?url=http://rsj.yulin.gov.cn/tszl/rsrc/rczp/P020260812319538702109.xlsx
+http://localhost:8090?url=https://filesamples.com/samples/document/docx/sample2.docx
 ```
+
+也可以在编辑器菜单里直接 **文件 → 新建**（生成空白文档）、**文件 → 打开**（选择本地文件）。
 
 ## 📊 端口说明
 
@@ -71,30 +67,13 @@ http://localhost:8090?url=http://rsj.yulin.gov.cn/tszl/rsrc/rczp/P02026081231953
 - Excel: `.xlsx`, `.xls`
 - PowerPoint: `.pptx`, `.ppt`
 
-## 🔧 管理命令
+## ☕ 支持一下
 
-```bash
-# 查看日志
-docker logs -f onlyoffice
+如果这个项目对你有帮助，欢迎请作者喝杯咖啡～
 
-# 停止
-docker stop onlyoffice
-
-# 重启
-docker restart onlyoffice
-
-# 删除
-docker rm -f onlyoffice
-```
-
-## 📁 项目结构
-
-```
-onlyoffice-demo/
-├── Dockerfile       # 一体化镜像定义（多阶段：前端构建 + OnlyOffice）
-├── frontend/        # 前端源码（Vue3 + Vite）
-└── README.md
-```
+| 微信 | 支付宝 |
+| --- | --- |
+| ![微信收款码](frontend/public/assign/wx.jpg) | ![支付宝收款码](frontend/public/assign/zfb.jpg) |
 
 ## 📄 License
 

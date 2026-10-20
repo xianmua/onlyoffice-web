@@ -1,8 +1,29 @@
-node_modules/
-dist/
-.cache/
-.env
-*.log
-.DS_Store
-*.zip
+# OnlyOffice demo environment
+#
+# 本地开发密钥/凭证约定：
+#   - .env                  本人真实配置（不入仓）
+#   - frontend/server/.env  本地后端的密钥/端口覆盖
+
+# 后端运行时配置 + API key
+frontend/server/.env
+frontend/server/.settings.json
+
+# Node / Vite 输出
+frontend/node_modules/
+frontend/dist/
+frontend/dist-win/
+frontend/server/.vite/
+
+# 浏览器/调试导出（按需）
+*.local.env
+
+# 临时/桥接目录（运行时生成，含改写后的 docx 缓存）
+/tmp/dsh-docs
+/tmp/dsh-bridge
+
+# 调试日志
+debug.log
+
+# 离线镜像包（太大，不发仓库）
 *.tar.gz
+
