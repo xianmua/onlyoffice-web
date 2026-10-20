@@ -48,7 +48,7 @@ docker run -d -p 8090:8090 -p 8089:80 --name onlyoffice onlyoffice-editor
 
 1. 安装 [OnlyOffice Docs](https://www.onlyoffice.com/download-docs.aspx)（Windows 版 Community Edition），端口选 **8089**
 2. 把 `dist-win/` 整体复制到服务器任意位置（如 `D:\ai-editor`）
-3. 复制 `.env.example` 为 `.env`，填入 `DEEPSEEK_API_KEY`（也可不填，启动后在 AI 面板齿轮设置里填，立即生效）
+3. 复制 `.env.example` 为 `.env`，填入 `AI_API_KEY`（也可不填，启动后在 AI 面板齿轮设置里填，立即生效）
 4. 双击 `ai-editor.exe`，看到 `listening on :8090` 即成功
 5. 浏览器访问 `http://服务器IP:8090/?url=<文档地址>`
 

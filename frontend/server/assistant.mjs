@@ -48,7 +48,7 @@ mkdirSync(UPLOAD_DIR, { recursive: true })
 const DOC_PUBLIC_ORIGIN = (process.env.DOC_PUBLIC_ORIGIN || '').replace(/\/+$/, '')
 
 const PORT = Number(process.env.ASSISTANT_PORT || 3001)
-const DSH_URL = (process.env.DSH_URL || '').trim()
+const AI_API_URL = (process.env.AI_API_URL || '').trim()
 // 剥掉用户粘贴时可能带上的 /v1 或 /v1beta1 /v2 /openai 这种"版本尾巴"，
 // 让拼路径时只拼一处 /v1/chat/completions，避免出现 /v1/v1/chat/completions 双 /v1。
 function stripVersionTail(url) {
@@ -56,9 +56,9 @@ function stripVersionTail(url) {
     .replace(/\/(v\d+(?:\.\d+)*(?:beta(?:\d+)?)?|openai|api|openapi)\/?$/i, '')
     .replace(/\/$/, '')
 }
-const DSH_BASE = stripVersionTail(DSH_URL)
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || ''
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+const AI_API_BASE = stripVersionTail(AI_API_URL)
+const AI_API_KEY = process.env.AI_API_KEY || ''
+const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini'
 
 // === 运行时设置：插件设置面板保存的覆盖值（.settings.json 不进 git） ===
 const SETTINGS_FILE = DATA_DIR ? path.join(DATA_DIR, '.settings.json') : path.join(path.dirname(fileURLToPath(import.meta.url)), '.settings.json')
@@ -69,9 +69,9 @@ function saveSettings() {
 }
 function effectiveConfig() {
   return {
-    apiUrl: stripVersionTail(runtimeSettings.apiUrl || DSH_URL),
-    apiKey: runtimeSettings.apiKey || DEEPSEEK_API_KEY,
-    model: runtimeSettings.model || DEEPSEEK_MODEL,
+    apiUrl: stripVersionTail(runtimeSettings.apiUrl || AI_API_URL),
+    apiKey: runtimeSettings.apiKey || AI_API_KEY,
+    model: runtimeSettings.model || AI_MODEL,
     extraPrompt: runtimeSettings.extraPrompt || '',
   }
 }
@@ -556,7 +556,7 @@ export function assistantMiddleware(req, res, next) {
   // === GET /api/health ===
   if (req.method === 'GET' && url === '/api/health') {
     cors(res, req)
-    res.end(JSON.stringify({ ok: true, apiUrl: DSH_BASE }))
+    res.end(JSON.stringify({ ok: true, apiUrl: AI_API_BASE }))
     return
   }
 
@@ -636,6 +636,6 @@ if (isDirectRun) {
     })
   })
   server.listen(PORT, () => {
-    console.log(`[assistant] standalone listening on :${PORT}, DSH_URL=${DSH_URL}`)
+    console.log(`[assistant] standalone listening on :${PORT}, AI_API_URL=${AI_API_URL}`)
   })
 }

@@ -29,7 +29,7 @@ Windows 部署步骤
 1. 安装 OnlyOffice Docs（Windows 版 Community Edition），安装时端口选 8089
    （前端页面固定连 8089 取编辑器 API）。
 2. 把本目录整体复制到服务器任意位置（如 D:\ai-editor）。
-3. 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY。
+3. 复制 .env.example 为 .env，填入 AI_API_KEY。
    不填也行：启动后在 AI 面板右上角齿轮设置里填，立即生效。
 4. 双击 ai-editor.exe（或命令行运行），看到 "listening on :8090" 即成功。
 5. 浏览器访问  http://服务器IP:8090/?url=<文档地址>
