@@ -1,37 +1,15 @@
-// 生产服务器（Bun 单文件编译入口）
-// 职责：静态托管 dist（含 /plugin-ai） + 进程内挂载 /api 助手中间件 —— 单进程单端口
-// 运行形态：
-//   源码调试：bun run server/prod.mjs         （ROOT = frontend/）
-//   Windows： ai-editor.exe（bun build --compile 产物，ROOT = exe 所在目录）
+// 生产服务器（Bun 单文件编译入口）：静态托管 dist + 进程内挂载助手中间件，单进程单端口。
+// 源码调试 bun run server/prod.mjs（ROOT=frontend/）；exe 形态 ROOT=exe 所在目录
 import http from 'node:http'
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { loadEnvFile, MIME } from './lib.mjs'
 
-// === 定位应用根目录 ===
-// 编译成 exe 后 import.meta.dir 在 Bun 虚拟文件系统里（/$bunfs/... 或 ~BUN），此时用 exe 自身目录；
-// 源码运行时是真实路径，ROOT = frontend/
-function appRoot() {
-  if (/[\\/$]bunfs|~BUN/i.test(import.meta.dir)) return path.dirname(process.execPath)
-  return path.resolve(import.meta.dir, '..')  // frontend/
-}
-const ROOT = appRoot()
+// exe 形态 import.meta.dir 在 Bun 虚拟文件系统里，此时用 exe 自身目录；源码运行 ROOT=frontend/
+const ROOT = /[\\/$]bunfs|~BUN/i.test(import.meta.dir) ? path.dirname(process.execPath) : path.resolve(import.meta.dir, '..')
 const DIST = path.join(ROOT, 'dist')
 const PORT = Number(process.env.PORT || process.env.PROD_PORT || 8090)
 
-// === 加载 exe 同目录 .env（零依赖简易版；AI 面板的运行时设置优先级更高） ===
-function loadEnvFile(file) {
-  if (!existsSync(file)) return
-  for (const raw of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const line = raw.trim()
-    if (!line || line.startsWith('#')) continue
-    const eq = line.indexOf('=')
-    if (eq < 0) continue
-    const key = line.slice(0, eq).trim()
-    let val = line.slice(eq + 1).trim()
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1)
-    if (!(key in process.env)) process.env[key] = val
-  }
-}
 loadEnvFile(path.join(ROOT, '.env'))
 loadEnvFile(path.join(ROOT, '..', '.env'))
 
@@ -43,27 +21,6 @@ mkdirSync(process.env.ASSISTANT_DATA_DIR, { recursive: true })
 const { assistantMiddleware } = await import('./assistant.mjs')
 
 // === 静态资源 ===
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.ico': 'image/x-icon',
-  '.webp': 'image/webp',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.map': 'application/json',
-  '.txt': 'text/plain; charset=utf-8',
-  '.wasm': 'application/wasm',
-}
-
 function safeJoin(base, urlPath) {
   const p = path.normalize(path.join(base, urlPath))
   if (p !== base && !p.startsWith(base + path.sep)) return null
@@ -91,9 +48,7 @@ function serveStatic(req, res) {
   if (file && existsSync(file) && statSync(file).isFile()) {
     const ext = path.extname(file).toLowerCase()
     const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' }
-    // 插件文件一律禁缓存：DS iframe 缓存很凶，改完代码刷新也可能跑旧脚本
-    if (urlPath.startsWith('/plugin-ai/')) headers['Cache-Control'] = 'no-store, must-revalidate'
-    else if (ext === '.html') headers['Cache-Control'] = 'no-cache'
+    if (ext === '.html') headers['Cache-Control'] = 'no-cache'
     sendFile(req, res, file, headers)
     return
   }

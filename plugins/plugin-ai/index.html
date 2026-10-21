@@ -29,6 +29,26 @@
     .bubble.typing span:nth-child(2) { animation-delay: .2s; }
     .bubble.typing span:nth-child(3) { animation-delay: .4s; }
     @keyframes aiDotBlink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+    /* 思考块（DSH 面板同款）：单行「思考 · 最新进度」，点击展开全部 */
+    .think { margin: 0 24px 10px 10px; }
+    .think-line { font-size: 12px; color: #9aa0aa; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .think-line:hover { color: #b9bfca; }
+    .think-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+    .spin {
+      flex: none; width: 11px; height: 11px; border-radius: 50%;
+      border: 2px solid #565b63; border-top-color: #a78bfa;
+      animation: thinkspin .9s linear infinite;
+    }
+    @keyframes thinkspin { to { transform: rotate(360deg); } }
+    .think-all {
+      margin-top: 6px; max-height: 200px; overflow-y: auto;
+      font-size: 11px; color: #8a8f98; line-height: 1.6;
+      white-space: pre-wrap; word-break: break-all;
+      border-left: 2px solid rgba(128, 128, 128, 0.3); padding-left: 9px;
+    }
+    #msgs::-webkit-scrollbar, #inp::-webkit-scrollbar, .think-all::-webkit-scrollbar { width: 6px; }
+    #msgs::-webkit-scrollbar-thumb, #inp::-webkit-scrollbar-thumb, .think-all::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    body.dark #msgs::-webkit-scrollbar-thumb, body.dark #inp::-webkit-scrollbar-thumb, body.dark .think-all::-webkit-scrollbar-thumb { background: #4a4d52; }
     #form { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #e5e7eb; align-items: flex-end; }
     body.dark #form { border-top-color: #4a4d52; }
     #inp { flex: 1; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 8px; font-size: 13px; outline: none; background: #fff; color: #333; resize: none; font-family: inherit; line-height: 1.4; overflow-y: hidden; }
@@ -120,6 +140,6 @@
       <button id="setBack" type="button">返回</button>
     </div>
   </div>
-  <script src="plugin.js?v=17"></script>
+  <script src="plugin.js?v=28"></script>
 </body>
 </html>

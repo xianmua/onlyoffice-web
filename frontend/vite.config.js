@@ -12,14 +12,6 @@ export default defineConfig({
     {
       name: 'assistant-backend',
       configureServer(server) {
-        // 插件文件一律禁缓存：DS iframe 对 plugin.js/index.html 缓存很凶，
-        // 改完代码刷新页面也可能跑旧脚本（曾导致"模型输出了 fontName 但插件没执行"）
-        server.middlewares.use((req, res, next) => {
-          if (req.url && req.url.startsWith('/plugin-ai/')) {
-            res.setHeader('Cache-Control', 'no-store, must-revalidate')
-          }
-          next()
-        })
         // 注意：要挂在 Vite 内部中间件之前，避免被静态/SPA fallback 抢走
         server.middlewares.use((req, res, next) => {
           if (req.url && req.url.startsWith('/@fs/')) return next()

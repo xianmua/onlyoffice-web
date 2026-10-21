@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# 给 OnlyOffice DocumentServer 打补丁：web 版文件菜单显示「打开...」项，
-# 点击后 postMessage('oo-open-local') 通知集成页弹出本地文件选择。
+# 给 OnlyOffice DocumentServer 打补丁：
+#   1-3) web 版文件菜单显示「打开...」项 + 「打开最近」图标（见下）
+#   4)  隐藏编辑器右侧设置栏（搜索/评论/聊天/插件/反馈/设置 的图标条），
+#       用 width:0 而非 display:none，避免 Viewport 按宽度计算布局留白
 # 幂等：已打过补丁则跳过。原文件备份为 *.orig-<日期>。
 set -euo pipefail
 
 DS=${DS:-/var/www/onlyoffice/documentserver}
 FM="$DS/web-apps/apps/documenteditor/main/app/view/FileMenu.js"
 LM="$DS/web-apps/apps/documenteditor/main/app/controller/LeftMenu.js"
+CSS="$DS/web-apps/apps/documenteditor/main/resources/css/app.css"
 
 command -v python3 >/dev/null || { echo "需要 python3"; exit 1; }
 [ -f "$FM" ] && [ -f "$LM" ] || { echo "找不到 DS 源文件: $FM"; exit 1; }
@@ -88,9 +91,31 @@ elif ANCHOR in lm:
     print("LeftMenu.js: file:open v2 分支已注入")
 else:
     print("LeftMenu.js: 锚点未命中！DS 版本可能不匹配"); sys.exit(1)
+
+# v3: 「打开最近」补 history 图标（时钟+逆时针箭头，DS 自带 btn-version-history 精灵图）
+ICON = "iconCls : 'menu__icon btn-version-history',"
+CAP = "caption : this.btnRecentFilesCaption,"
+if "btn-version-history" in fm and CAP in fm:
+    print("FileMenu.js: 图标补丁已存在，跳过")
+elif CAP in fm:
+    fm = fm.replace(CAP, CAP + "\n                " + ICON, 1)
+    io.open(fm_path, 'w', encoding='utf-8').write(fm)
+    print("FileMenu.js: 打开最近图标已注入")
+else:
+    print("FileMenu.js: 图标锚点未命中（不阻塞其余补丁）")
 PYEOF
 
+# ---- Patch 3.5: CSS 隐藏右侧设置栏图标条（width:0 保布局，!important 压过 JS 内联宽度）----
+if ! ls "${CSS}.orig-"* >/dev/null 2>&1; then cp "$CSS" "${CSS}.orig-$(date +%Y%m%d)"; fi
+MARK="ai-demo-hide-right-menu"
+if grep -q "$MARK" "$CSS"; then
+  echo "app.css: 右侧栏隐藏补丁已存在，跳过"
+else
+  printf '\n/* %s */\n#right-menu{width:0!important;overflow:hidden!important;border:none!important;}\n' "$MARK" >> "$CSS"
+  echo "app.css: 右侧设置栏已隐藏"
+fi
+
 # nginx 开了 gzip_static，必须同步重生成 .gz（gzip -c 保留原文件，-n 不带时间戳）
-for f in "$FM" "$LM"; do gzip -9n -c "$f" > "$f.gz"; done
+for f in "$FM" "$LM" "$CSS"; do gzip -9n -c "$f" > "$f.gz"; done
 
 echo "==> 完成。刷新浏览器（Ctrl+F5）生效。"

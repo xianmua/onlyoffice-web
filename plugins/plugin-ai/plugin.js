@@ -28,11 +28,10 @@
   }
 
   function setStatus(text, cls) {
-    // topbar 的 #status 仅异常时显示（正常轮询计数太吵）；设置面板 #status2 常显
+    // topbar 的 #status 常显（轮询计数/写文档状态直接可见）；设置面板 #status2 同步显示
     const tag = document.getElementById('status')
     if (tag) {
-      const isErr = (cls || 'idle') === 'err'
-      tag.style.display = isErr ? '' : 'none'
+      tag.style.display = ''
       tag.textContent = text
       tag.className = cls || 'idle'
     }
@@ -139,6 +138,161 @@
     // 第3参 recalc=true 触发画布重绘（同 docFormat）
     window.Asc.plugin.callCommand(fn, false, true, function (ret) {
       dbg('pushEnd 返回 ' + JSON.stringify(ret))
+      cb(ret)
+    })
+  }
+
+  // 真表格：Api.CreateTable 追加到文档末尾，data 二维数组填内容
+  function docTable(rows, cols, data, cb) {
+    const implSrc =
+      '(function(rows, cols, data){' +
+      'try{' +
+      'rows = Math.max(1, Math.min(50, rows|0)); cols = Math.max(1, Math.min(20, cols|0));' +
+      'var doc = Api.GetDocument();' +
+      'var t = Api.CreateTable(cols, rows);' +
+      't.SetTableBorderAll("single", 4, 0, 0, 0, 0);' +
+      'if (data && data.length){' +
+      ' for (var r=0; r<rows && r<data.length; r++){' +
+      '  var row = data[r]; if (!row) continue;' +
+      '  for (var c=0; c<cols && c<row.length; c++){' +
+      '   var v = row[c]; if (v===null || v===undefined || v==="") continue;' +
+      '   var cell = t.GetCell(r, c); if (!cell) continue;' +
+      '   var cc = cell.GetContent();' +
+      '   var p = !cc ? null : (cc.length ? cc[0] : (cc.GetElement ? cc.GetElement(0) : null));' +
+      '   if (p && p.AddText) p.AddText(String(v));' +
+      '  }' +
+      ' }' +
+      '}' +
+      'doc.Push(t);' +
+      'doc.Push(Api.CreateParagraph());' +
+      'var D=doc.Document||doc; if(D&&D.Recalculate)D.Recalculate();' +
+      'return "ok:"+rows+"x"+cols;' +
+      '}catch(e){ return "err:"+e.message; }' +
+      '})(' + JSON.stringify(rows|0 || 3) + ',' + JSON.stringify(cols|0 || 3) + ',' + JSON.stringify(data || null) + ')'
+    const fn = new Function('return ' + implSrc + ';')
+    // 第3参 recalc=true 触发画布重绘（同 pushEnd）
+    window.Asc.plugin.callCommand(fn, false, true, function (ret) {
+      console.log('[oo] docTable 返回:', JSON.stringify(ret))
+      dbg('docTable 返回 ' + JSON.stringify(ret))
+      cb(ret)
+    })
+  }
+
+  // 超链接：段落级 AddHyperlink，追加到文档末尾
+  function docLink(url, text, cb) {
+    const implSrc =
+      '(function(url, text){' +
+      'try{' +
+      'var doc = Api.GetDocument();' +
+      'var p = Api.CreateParagraph();' +
+      'p.AddHyperlink({ sUrl: url, sText: text || url, sToolTip: url });' +
+      'doc.Push(p);' +
+      'var D=doc.Document||doc; if(D&&D.Recalculate)D.Recalculate();' +
+      'return "ok";' +
+      '}catch(e){ return "err:"+e.message; }' +
+      '})(' + JSON.stringify(String(url)) + ',' + JSON.stringify(String(text || '')) + ')'
+    const fn = new Function('return ' + implSrc + ';')
+    window.Asc.plugin.callCommand(fn, false, true, function (ret) {
+      dbg('docLink 返回 ' + JSON.stringify(ret))
+      cb(ret)
+    })
+  }
+
+  // 图片：URL 或 base64，宽高毫米（默认 120x90），追加到文档末尾
+  function docImage(src, w, h, cb) {
+    w = Math.min(300, Math.max(10, parseInt(w, 10) || 120))
+    h = Math.min(300, Math.max(10, parseInt(h, 10) || 90))
+    const implSrc =
+      '(function(src, w, h){' +
+      'try{' +
+      'var doc = Api.GetDocument();' +
+      // CreateImage 宽高是 EMU 单位（1mm=36000），入参为毫米须换算，否则画布上仅 0.003mm 不可见
+      'var img = Api.CreateImage(src, w*36000, h*36000);' +
+      'var p = Api.CreateParagraph();' +
+      'p.AddDrawing(img);' +
+      'doc.Push(p);' +
+      'var D=doc.Document||doc; if(D&&D.Recalculate)D.Recalculate();' +
+      'return "ok:"+w+"x"+h;' +
+      '}catch(e){ return "err:"+e.message; }' +
+      '})(' + JSON.stringify(String(src)) + ',' + JSON.stringify(w) + ',' + JSON.stringify(h) + ')'
+    const fn = new Function('return ' + implSrc + ';')
+    window.Asc.plugin.callCommand(fn, false, true, function (ret) {
+      dbg('docImage 返回 ' + JSON.stringify(ret))
+      cb(ret)
+    })
+  }
+
+  // 图表：Api.CreateChart 追加到文档末尾；series=[{name,data[]}]，categories=[...]
+  function docChart(chartType, categories, series, w, h, cb) {
+    const OK = ['bar', 'column', 'line', 'pie', 'area', 'scatter', 'doughnut']
+    if (OK.indexOf(chartType) < 0) chartType = 'bar'
+    // DS 内部类型名映射：此版本 sdkjs 无 "line"/"column"，须用 lineNormal/bar（column 即竖向柱状）
+    const TYPEMAP = { line: 'lineNormal', column: 'bar' }
+    if (TYPEMAP[chartType]) chartType = TYPEMAP[chartType]
+    w = Math.min(400, Math.max(40, parseInt(w, 10) || 120))
+    h = Math.min(400, Math.max(40, parseInt(h, 10) || 80))
+    const data = series.slice(0, 10).map(function (s) { return (s && s.data) || [] })
+    const names = series.slice(0, 10).map(function (s, i) { return (s && s.name) || '系列' + (i + 1) })
+    const implSrc =
+      '(function(type, data, names, cats, w, h){' +
+      'try{' +
+      'var doc = Api.GetDocument();' +
+      // CreateChart 宽高是 EMU 单位（1mm=36000），同 CreateImage
+      'var chart = Api.CreateChart(type, data, names, cats, w*36000, h*36000, 0);' +
+      'var p = Api.CreateParagraph();' +
+      'p.AddDrawing(chart);' +
+      'doc.Push(p);' +
+      'var D=doc.Document||doc; if(D&&D.Recalculate)D.Recalculate();' +
+      'return "ok:"+type;' +
+      '}catch(e){ return "err:"+e.message; }' +
+      '})(' + JSON.stringify(chartType) + ',' + JSON.stringify(data) + ',' + JSON.stringify(names) + ',' + JSON.stringify(categories || []) + ',' + JSON.stringify(w) + ',' + JSON.stringify(h) + ')'
+    const fn = new Function('return ' + implSrc + ';')
+    window.Asc.plugin.callCommand(fn, false, true, function (ret) {
+      dbg('docChart 返回 ' + JSON.stringify(ret))
+      cb(ret)
+    })
+  }
+
+  // 合并：把某表格 row 行 colStart~colEnd 横向合并（anchor 定位表格，缺省第一个）
+  function docMerge(anchor, row, colStart, colEnd, cb) {
+    const implSrc =
+      '(function(anchor, row, c0, c1){' +
+      'try{' +
+      'var doc = Api.GetDocument();' +
+      'var tables = [];' +
+      'for (var i=0;i<doc.GetElementsCount();i++){' +
+      ' var el = doc.GetElement(i);' +
+      ' if (el && typeof el.GetClassType==="function" && el.GetClassType()==="table") tables.push(el);' +
+      '}' +
+      'if (!tables.length) return "err:文档里没有表格";' +
+      'var t = tables[0];' +
+      'if (anchor){' +
+      ' outer: for (var ti=0;ti<tables.length;ti++){' +
+      '  var tt = tables[ti];' +
+      '  for (var r=0;r<tt.GetRowsCount();r++){' +
+      '   var rr = tt.GetRow(r);' +
+      '   for (var c=0;c<rr.GetCellsCount();c++){' +
+      '    var cc = rr.GetCell(c);' +
+      '    if (cc && cc.GetText && String(cc.GetText()).indexOf(anchor)>=0){ t = tt; break outer; }' +
+      '   }' +
+      '  }' +
+      ' }' +
+      '}' +
+      'row = Math.max(0, Math.min(t.GetRowsCount()-1, row|0));' +
+      'var rr = t.GetRow(row);' +
+      'var n = rr.GetCellsCount();' +
+      'c0 = Math.max(0, Math.min(n-2, c0|0)); c1 = Math.max(c0+1, Math.min(n-1, c1|0));' +
+      'var cells = [];' +
+      'for (var c=c0;c<=c1;c++) cells.push(rr.GetCell(c));' +
+      'if (cells.length<2) return "err:合并范围少于两格";' +
+      't.MergeCells(cells);' +
+      'var D=doc.Document||doc; if(D&&D.Recalculate)D.Recalculate();' +
+      'return "ok:row"+row+" c"+c0+"-"+c1;' +
+      '}catch(e){ return "err:"+e.message; }' +
+      '})(' + JSON.stringify(String(anchor || '')) + ',' + JSON.stringify(parseInt(row, 10) || 0) + ',' + JSON.stringify(parseInt(colStart, 10) || 0) + ',' + JSON.stringify(parseInt(colEnd, 10) || 0) + ')'
+    const fn = new Function('return ' + implSrc + ';')
+    window.Asc.plugin.callCommand(fn, false, true, function (ret) {
+      dbg('docMerge 返回 ' + JSON.stringify(ret))
       cb(ret)
     })
   }
@@ -289,6 +443,29 @@
         docFormat(a.anchor, a, function (ret) { dbg('docFormat 返回 ' + ret); next() })
         return
       }
+      if (a.type === 'table') {
+        docTable(parseInt(a.rows, 10) || 3, parseInt(a.cols, 10) || 3, a.data, function () { next() })
+        return
+      }
+      if (a.type === 'link') {
+        if (!a.url) { dbg('link 缺 url，跳过'); next(); return }
+        docLink(String(a.url), a.text ? plain(a.text) : '', function () { next() })
+        return
+      }
+      if (a.type === 'image') {
+        if (!a.src) { dbg('image 缺 src，跳过'); next(); return }
+        docImage(a.src, a.width, a.height, function () { next() })
+        return
+      }
+      if (a.type === 'chart') {
+        if (!Array.isArray(a.series) || !a.series.length) { dbg('chart 缺 series，跳过'); next(); return }
+        docChart(a.chartType, Array.isArray(a.categories) ? a.categories : [], a.series, a.width, a.height, function () { next() })
+        return
+      }
+      if (a.type === 'merge') {
+        docMerge(a.anchor ? plain(a.anchor) : '', a.row, a.colStart, a.colEnd, function () { next() })
+        return
+      }
       if (!content) { next(); return }
       if (a.type === 'replace') {
         if (!a.anchor) { dbg('replace 缺 anchor，跳过'); next(); return }
@@ -328,6 +505,7 @@
       const r = await fetch(apiBase + '/api/pending?session=' + encodeURIComponent(session), { cache: 'no-store' })
       if (!r.ok) { setStatus('后端' + r.status, 'err'); return }
       const j = await r.json()
+      console.log('[oo] poll 拿到:', j.instruction ? String(j.instruction).slice(0, 60) : '(空)')
       if (!j.instruction) return
       handleInstruction(j.instruction, function () {})
     } catch (e) {
@@ -363,6 +541,8 @@
 
   window.Asc.plugin.button = function (id) {
     dbg('toolbar button 点击 id=' + id)
+    // 面板右上角 X（id=-1）：插件定义了 button 回调后，DS 不再自动关闭，须自己触发
+    if (id === -1) this.executeCommand('close', '')
   }
 
   // ===== 原生对话 UI：面板内直接聊天，AI 决定写入位置 =====
@@ -394,15 +574,29 @@
     return b
   }
 
+  // DSH web 风格思考块：单行「思考 · 最新进度」，点击展开全部；回复到达后整体移除
   function typingBubble() {
     const div = document.createElement('div')
     div.className = 'msg ai'
+    const think = document.createElement('div')
+    think.className = 'think'
+    const thinkLine = document.createElement('div')
+    thinkLine.className = 'think-line'
+    const spin = document.createElement('span'); spin.className = 'spin'
+    const label = document.createElement('span'); label.textContent = '思考 · '
+    const cur = document.createElement('span'); cur.className = 'think-cur'; cur.textContent = '准备中…'
+    thinkLine.appendChild(spin); thinkLine.appendChild(label); thinkLine.appendChild(cur)
+    const thinkAll = document.createElement('div')
+    thinkAll.className = 'think-all'; thinkAll.style.display = 'none'
+    thinkLine.addEventListener('click', function () {
+      thinkAll.style.display = thinkAll.style.display === 'none' ? 'block' : 'none'
+    })
+    think.appendChild(thinkLine); think.appendChild(thinkAll)
     const b = document.createElement('div')
-    b.className = 'bubble typing'
+    b.className = 'bubble typing'; b.style.display = 'none'
     b.innerHTML = '<span></span><span></span><span></span>'
-    div.appendChild(b)
-    box.appendChild(div)
-    box.scrollTop = box.scrollHeight
+    div.appendChild(think); div.appendChild(b)
+    box.appendChild(div); box.scrollTop = box.scrollHeight
     return b
   }
 
@@ -487,11 +681,37 @@
     try {
       // 实时抽取文档正文作为选址上下文
       const docText = await new Promise(function (res) { getDocText(res) })
-      const r = await fetch(apiBase + '/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, docUrl: session, docContext: docText }),
-      })
+      // 思考过程：轮询喂给思考块（单行最新/点击展开全部）
+      const reqId = 'r' + Date.now().toString(36)
+      const think = typing.previousElementSibling
+      const thinkCur = think ? think.querySelector('.think-cur') : null
+      const thinkAll = think ? think.querySelector('.think-all') : null
+      const progTimer = setInterval(function () {
+        fetch(apiBase + '/api/chat-progress?reqId=' + reqId)
+          .then(function (r) { return r.json() })
+          .then(function (j) {
+            const lines = j.lines || []
+            if (!lines.length || !thinkCur) return
+            thinkCur.textContent = lines[lines.length - 1]
+            if (thinkAll) {
+              thinkAll.textContent = lines.join('\n')
+              if (thinkAll.style.display !== 'none') thinkAll.scrollTop = thinkAll.scrollHeight
+            }
+          })
+          .catch(function () {})
+      }, 1000)
+      let r
+      try {
+        r = await fetch(apiBase + '/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, docUrl: session, docContext: docText, reqId: reqId }),
+        })
+      } finally {
+        clearInterval(progTimer)
+        if (think) think.parentNode.removeChild(think)  // 结束后思考块让位给正式回复
+        typing.style.display = ''
+      }
       const j = await r.json()
       typing.parentNode.className = 'msg ai'
       typing.className = 'bubble'

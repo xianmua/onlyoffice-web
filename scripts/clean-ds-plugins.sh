@@ -11,8 +11,8 @@ SP="$DS/sdkjs-plugins"
 OFF="$DS/sdkjs-plugins-disabled"
 LIST="$SP/plugin-list-default.json"
 
-# 白名单：本项目插件 + 共享资源 + 本地测试文档
-KEEP="plugin-ai local-test pluginBase.js plugins.css v1 plugin-list-default.json"
+# 白名单：本项目插件（AI 助手 + DSH AI + 插件管理器市场）+ 共享资源 + 本地测试文档
+KEEP="plugin-ai plugin-dsh marketplace local-test pluginBase.js plugins.css v1 plugin-list-default.json"
 
 mkdir -p "$OFF"
 moved=0

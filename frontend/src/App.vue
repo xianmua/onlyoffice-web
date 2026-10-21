@@ -28,6 +28,20 @@ let currentUrl = ''
 let currentSession = ''
 let currentF = ''
 let currentName = ''
+let currentCb = ''
+
+// 编辑器插件列表：后端动态发现（/api/editor-plugins），失败回落内置列表
+let editorPlugins = [
+  { name: 'AI 助手', guid: 'asc.{7A1B9C0D-5E2F-4A3B-8C4D-000000000001}', baseUrl: '/plugins/plugin-ai', autostart: true },
+  { name: 'DSH AI', guid: 'asc.{55BA7070-469A-444D-A99B-1ADBD4DA7631}', baseUrl: '/plugins/plugin-dsh', autostart: false },
+]
+async function loadEditorPlugins() {
+  try {
+    const r = await fetch('/api/editor-plugins')
+    const data = await r.json()
+    if (Array.isArray(data.plugins) && data.plugins.length) editorPlugins = data.plugins
+  } catch { /* 保持内置列表 */ }
+}
 
 // 最近文档：喂给原生「文件-打开最近」面板（点击会 window.open 该 url）
 // 本地打开（f=文件id）的条目记 ?f=<id>，远程文档记 ?url=...
@@ -58,13 +72,16 @@ function sessionKeyOf(u) {
   return ('00000000' + (h >>> 0).toString(16)).slice(-8)
 }
 
-// 从 URL 直接加载文档（跳过后端）；f=本地文件 id、name=文件名（用于最近列表记录）
-async function loadDocument(url, f, name) {
+// 从 URL 直接加载文档（跳过后端）；f=本地文件 id、name=文件名（用于最近列表记录）、cbOrigin=DS 保存回调地址前缀
+async function loadDocument(url, f, name, cbOrigin) {
   try {
     currentUrl = url
     currentF = f || ''
     currentName = name || ''
+    currentCb = cbOrigin || ''
     currentSession = sessionKeyOf(url)
+    // 先拿插件列表再组装 editorConfig（两条进入路径都会走到这里，await 一次开销极小）
+    await loadEditorPlugins()
     // 登记到后端：插件 iframe 若丢失 query 参数，可通过 /api/session 兜底查到
     fetch('/api/session', {
       method: 'POST',
@@ -115,26 +132,35 @@ async function loadDocument(url, f, name) {
           name: "访客"
         },
         customization: {
-          autosave: true
+          autosave: true,
+          // 开启后 Ctrl+S/保存按钮触发 forcesave 回调（status 6 携带最终文档 URL 落盘）；
+          // 关闭编辑器时还有 status 2 兜底保存
+          forcesave: true
         },
+        // 保存回调：DS 自动保存/关闭时 POST 最终文档到此地址，后端覆盖原文件（仅本地文档有）
+        ...(currentF && currentCb ? { callbackUrl: `${currentCb}/api/callback?f=${encodeURIComponent(currentF)}` } : {}),
         // 最近文档 → 原生「文件-打开最近」面板（本地文件选择走原生「打开」按钮）
         recent: getRecent(),
-        // 仅当 docx 时挂 AI 插件（其他格式 PasteText 行为不一致）
-        ...(docType === 'word' ? {
+        // 仅 docx 挂插件；autostart 是串行队列，config.json 里 isAutostart:true 的至多一个
+        ...(docType === 'word' && editorPlugins.length ? {
           plugins: {
-            // autostart 只接受 GUID 字符串数组
-            autostart: ['asc.{7A1B9C0D-5E2F-4A3B-8C4D-000000000001}'],
-            // 此版本 DS 的 pluginsData 是 config.json 路径数组（不是元数据对象）。
-            // 插件文件由 Vite 同域提供（8090），与 /api 同源，轮询无任何 CORS 问题
-            pluginsData: [
-              `${window.location.origin}/plugin-ai/config.json`,
-            ],
+            autostart: editorPlugins.filter((p) => p.autostart).map((p) => p.guid),
+            pluginsData: editorPlugins.map((p) => `${window.location.origin}${p.baseUrl}/config.json`),
           },
         } : {}),
       },
       type: "desktop",
       width: "100%",
       height: "100%"
+    }
+
+    // 登记 DS 文档 key：/api/export 导出时后端能对该文档发 forcesave 拉最新版
+    if (currentF) {
+      fetch('/api/dockey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ f: currentF, key: config.document.key }),
+      }).catch(() => {})
     }
 
     initEditor(config)
@@ -227,7 +253,7 @@ onMounted(() => {
     fetch('/api/doc?f=' + encodeURIComponent(fid))
       .then((r) => r.json())
       .then((j) => {
-        if (j.url) loadDocument(j.url, fid, j.name)
+        if (j.url) loadDocument(j.url, fid, j.name, j.callbackOrigin)
         else { error.value = j.error || '文件不存在或已过期'; loading.value = false }
       })
       .catch((e) => { error.value = '加载失败：' + e.message; loading.value = false })
@@ -235,8 +261,25 @@ onMounted(() => {
   }
   const url = params.get('url')
   if (url) {
-    console.log('📥 直接加载在线文档:', url)
-    loadDocument(url)
+    console.log('📥 加载在线文档:', url)
+    // ?url= 自动转托管：先导入落盘再按 ?f= 流程打开，
+    // 保存回调 / AI 改动落盘 / 导出全部可用；导入失败（源站不可达等）回退直连预览
+    fetch('/api/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && j.id) {
+          console.log('📦 已转托管:', j.id, j.name)
+          loadDocument(j.url, j.id, j.name, j.callbackOrigin)
+        } else {
+          console.warn('⚠️ 转托管失败，回退直连预览', j)
+          loadDocument(url)
+        }
+      })
+      .catch(() => loadDocument(url))
   } else {
     error.value = '请提供 url 参数，例如: ?url=http://example.com/doc.xlsx'
     loading.value = false

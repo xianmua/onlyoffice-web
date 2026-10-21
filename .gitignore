@@ -6,7 +6,7 @@
 
 # 后端运行时配置 + API key
 frontend/server/.env
-frontend/server/.settings.json
+frontend/server/.settings*.json
 
 # Node / Vite 输出
 frontend/node_modules/
