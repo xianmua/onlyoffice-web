@@ -24,6 +24,7 @@ import { ref, onMounted } from 'vue'
 const loading = ref(true)
 const editorReady = ref(false)
 const error = ref('')
+const authUser = ref(null) // { userid, name } | null（企微登录后由编辑器插件「企微登录」面板获取）
 let currentUrl = ''
 let currentSession = ''
 let currentF = ''
@@ -72,6 +73,15 @@ function sessionKeyOf(u) {
   return ('00000000' + (h >>> 0).toString(16)).slice(-8)
 }
 
+// 企微登录身份恢复（登录入口在编辑器插件「企微登录」面板里，此处只读取登录态注入协同身份）。
+// 任何异常都降级为访客，绝不阻断文档加载
+async function initAuth() {
+  try {
+    const me = await (await fetch('/api/auth/me')).json()
+    if (me.authed) authUser.value = { userid: me.userid, name: me.name }
+  } catch { /* 后端不可用 → 访客模式 */ }
+}
+
 // 从 URL 直接加载文档（跳过后端）；f=本地文件 id、name=文件名（用于最近列表记录）、cbOrigin=DS 保存回调地址前缀
 async function loadDocument(url, f, name, cbOrigin) {
   try {
@@ -114,7 +124,10 @@ async function loadDocument(url, f, name, cbOrigin) {
     const config = {
       document: {
         fileType: fileType,
-        key: `doc_${Date.now()}`,
+        // key 是 DS 协同会话的分组依据：同一文档必须同 key 才能实时协同；
+        // f 与文件一一对应（重新上传会生成新 f），故 key 直接绑 f。
+        // 无 f 的临时预览保持旧行为（每次新 key，不参与协同）。
+        key: currentF ? `doc_${currentF}` : `doc_${Date.now()}`,
         title: currentName || `在线文档.${ext}`,
         url: url,
         permissions: {
@@ -128,14 +141,20 @@ async function loadDocument(url, f, name, cbOrigin) {
         mode: "edit",
         lang: "zh-CN",
         user: {
-          id: "1",
-          name: "访客"
+          // 未登录也必须每人唯一：固定 id 会让 DS 把多窗口视为同一用户，协同会话互相干扰
+          id: authUser.value?.userid || `anon-${Math.random().toString(36).slice(2, 8)}`,
+          name: authUser.value?.name || '访客'
         },
         customization: {
           autosave: true,
           // 开启后 Ctrl+S/保存按钮触发 forcesave 回调（status 6 携带最终文档 URL 落盘）；
           // 关闭编辑器时还有 status 2 兜底保存
-          forcesave: true
+          forcesave: true,
+          // 紧凑头部：logo/文档名所在的首行收起，操作按钮并入工具栏，界面更干净
+          compactHeader: true,
+          toolbarHideFileName: true,
+          // 左上角 ONLYOFFICE 标识隐藏（社区版若忽略此配置则仍显示）
+          logo: { visible: false }
         },
         // 保存回调：DS 自动保存/关闭时 POST 最终文档到此地址，后端覆盖原文件（仅本地文档有）
         ...(currentF && currentCb ? { callbackUrl: `${currentCb}/api/callback?f=${encodeURIComponent(currentF)}` } : {}),
@@ -239,7 +258,7 @@ async function onPickFile(file) {
 }
 
 // 页面加载时从 URL 参数读取
-onMounted(() => {
+onMounted(async () => {
   // DS 文件菜单「打开...」在 DS frame 内弹系统文件对话框（patch v2），
   // 选中后 File 对象 postMessage 过来（structured clone 跨 frame 传输），本页负责上传与跳转
   window.addEventListener('message', (e) => {
@@ -247,6 +266,8 @@ onMounted(() => {
     if (d && d.type === 'oo-local-file' && d.file) onPickFile(d.file)
   })
   const params = new URLSearchParams(window.location.search)
+  // 企微登录态先行：本地毫秒级调用，保证 loadDocument 时编辑器身份已就位
+  await initAuth()
   // 本地文件：地址栏只带文件 id（?f=<id>），向后端反查真实 URL
   const fid = params.get('f')
   if (fid) {
@@ -273,6 +294,9 @@ onMounted(() => {
       .then((j) => {
         if (j && j.id) {
           console.log('📦 已转托管:', j.id, j.name)
+          // 地址栏换成 ?f=<id>：f 即协同房间号，此后分享/刷新都走同一房间；
+          // 否则链接里的 ?url= 会让下一个人再次转存生成新 id，协同分裂
+          history.replaceState(null, '', '/?f=' + encodeURIComponent(j.id))
           loadDocument(j.url, j.id, j.name, j.callbackOrigin)
         } else {
           console.warn('⚠️ 转托管失败，回退直连预览', j)
