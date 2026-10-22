@@ -16,6 +16,8 @@ import * as modDocs from './plugins/docs.mjs'
 import * as modEditorPlugins from './plugins/editor-plugins.mjs'
 import * as modAiServer from '../../plugins/plugin-ai/server.mjs'
 import * as modDshServer from '../../plugins/plugin-dsh/server.mjs'
+import * as modChatServer from '../../plugins/plugin-chat/server.mjs'
+import * as modWecomServer from '../../plugins/plugin-chat/wecom-server.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -60,6 +62,8 @@ for (const [rel, mod, label] of [
   ['./plugins/editor-plugins.mjs', modEditorPlugins, 'editor-plugins.mjs'],
   ['../../plugins/plugin-ai/server.mjs', modAiServer, 'plugin-ai/server.mjs'],
   ['../../plugins/plugin-dsh/server.mjs', modDshServer, 'plugin-dsh/server.mjs'],
+  ['../../plugins/plugin-chat/wecom-server.mjs', modWecomServer, 'plugin-chat/wecom-server.mjs'],
+  ['../../plugins/plugin-chat/server.mjs', modChatServer, 'plugin-chat/server.mjs'],
 ]) loadModule(mod, label, path.resolve(__dirname, rel))
 
 // 外挂 1：ASSISTANT_PLUGINS_DIR 下的 *.mjs（_ 开头跳过）
