@@ -26,8 +26,9 @@
 ```
 plugins/
   plugin-ai/    config.json + index.html + plugin.js + server.mjs
-  plugin-dsh/   config.json + icon.svg + index.html + plugin.js + server.mjs
 ```
+
+> DSH AI / 企微（plugin-dsh、plugin-wecom）已迁出主项目，分发备份见 [onlyoffice-web-plugins](https://github.com/xianmua/onlyoffice-web-plugins)。
 
 | 形态 | 插件目录 | 生效方式 |
 |------|---------|---------|
@@ -58,7 +59,7 @@ docker run -d -p 8090:8090 -p 8089:80 --name onlyoffice onlyoffice-editor
 
 1. 安装 [OnlyOffice Docs](https://www.onlyoffice.com/download-docs.aspx)（Windows 版 Community Edition），端口选 **8089**
 2. 把 `dist-win/` 整体复制到服务器任意位置（如 `D:\ai-editor`）
-3. 复制 `frontend/server/.env.example` 为 `.env`，按需填 `AI_API_KEY`（AI 助手）；DSH AI 需本机装有 `dsh` CLI 并配 `DSH_API_KEY`。也可不填，启动后在面板齿轮设置里填，立即生效
+3. 复制 `frontend/server/.env.example` 为 `.env`，按需填 `AI_API_KEY`（AI 助手）。也可不填，启动后在面板齿轮设置里填，立即生效
 4. 双击 `ai-editor.exe`，看到 `listening on :8090` 即成功
 5. 浏览器访问 `http://服务器IP:8090/?url=<文档地址>`
 

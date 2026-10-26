@@ -34,7 +34,6 @@ let currentCb = ''
 // 编辑器插件列表：后端动态发现（/api/editor-plugins），失败回落内置列表
 let editorPlugins = [
   { name: 'AI 助手', guid: 'asc.{7A1B9C0D-5E2F-4A3B-8C4D-000000000001}', baseUrl: '/plugins/plugin-ai', autostart: true },
-  { name: 'DSH AI', guid: 'asc.{55BA7070-469A-444D-A99B-1ADBD4DA7631}', baseUrl: '/plugins/plugin-dsh', autostart: false },
 ]
 async function loadEditorPlugins() {
   try {
