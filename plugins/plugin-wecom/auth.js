@@ -4,18 +4,18 @@
 //（按钮点击有用户手势，弹窗必成功）。
 ;(function () {
   window.WecomAuth = {
-    apiBase: window.location.origin, // 插件 iframe 与前端/后端同源加载，直接取即可
+    apiBase: window.OO_API_BASE || window.location.origin, // config.js 可配置；留空取同源（内置注入式）
 
     async getConfig() {
-      return (await fetch(this.apiBase + '/api/auth/wecom/config', { cache: 'no-store' })).json()
+      return (await fetch(this.apiBase + '/api/auth/wecom/config', { cache: 'no-store', credentials: 'include' })).json()
     },
 
     async me() {
-      return (await fetch(this.apiBase + '/api/auth/me', { cache: 'no-store' })).json()
+      return (await fetch(this.apiBase + '/api/auth/me', { cache: 'no-store', credentials: 'include' })).json()
     },
 
     async logout() {
-      try { await fetch(this.apiBase + '/api/auth/logout', { method: 'POST' }) } catch { /* 下次轮询自然降级 */ }
+      try { await fetch(this.apiBase + '/api/auth/logout', { method: 'POST', credentials: 'include' }) } catch { /* 下次轮询自然降级 */ }
     },
 
     // 弹授权窗并等待结果。返回 { ok:true, userid, name } 或 { ok:false, reason }
@@ -44,7 +44,7 @@
             return
           }
           try {
-            const j = await (await fetch(WecomAuth.apiBase + '/api/auth/me', { cache: 'no-store' })).json()
+            const j = await (await fetch(WecomAuth.apiBase + '/api/auth/me', { cache: 'no-store', credentials: 'include' })).json()
             if (j.authed) {
               clearInterval(timer)
               resolve({ ok: true, userid: j.userid, name: j.name })

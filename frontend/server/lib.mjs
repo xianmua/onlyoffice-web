@@ -50,7 +50,10 @@ export function loadEnvFile(file) {
 // 写死 CORS_ORIGIN 会导致跨源 JSON POST 的预检失败
 export function cors(res, req) {
   const origin = req.headers.origin || '*'
+  // 允许插件独立安装到 DS（跨源 iframe）时携带 session cookie 调后端；
+  // 带 credentials 时 ACAO 必须回显具体 origin（不能是 *），上方 echo 已满足
   res.setHeader('Access-Control-Allow-Origin', origin)
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Content-Type', 'application/json')
