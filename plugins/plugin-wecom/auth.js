@@ -1,4 +1,4 @@
-// 共享企微登录助手：plugin-chat 面板经同源 <script src> 复用（弹窗授权 + 登录态轮询）。
+// 共享企微登录助手：plugin-wecom 面板经同源 <script src> 复用（弹窗授权 + 登录态轮询）。
 // startLogin()：弹授权窗（企微内静默 / PC 扫码）→ 轮询 /api/auth/me 感知落 cookie →
 // 收场返回结果。授权窗被浏览器拦截时返回 blocked，由调用方回落到「按钮点击再试」
 //（按钮点击有用户手势，弹窗必成功）。
