@@ -28,17 +28,12 @@
   }
 
   function setStatus(text, cls) {
-    // topbar 的 #status 常显（轮询计数/写文档状态直接可见）；设置面板 #status2 同步显示
+    // topbar 的 #status 常显（写文档等真实状态直接可见）
     const tag = document.getElementById('status')
     if (tag) {
       tag.style.display = ''
       tag.textContent = text
       tag.className = cls || 'idle'
-    }
-    const tag2 = document.getElementById('status2')
-    if (tag2) {
-      tag2.textContent = text
-      tag2.className = cls || 'idle'
     }
   }
 
@@ -100,7 +95,6 @@
 
   let busy = false
   let inserted = 0
-  let pollCount = 0
   let started = false
 
   function pasteText(text, cb) {
@@ -501,8 +495,6 @@
     }
     busy = true
     try {
-      pollCount++
-      setStatus('…轮询' + pollCount, 'busy')
       const r = await fetch(apiBase + '/api/pending?session=' + encodeURIComponent(session), { cache: 'no-store' })
       if (!r.ok) { setStatus('后端' + r.status, 'err'); return }
       const j = await r.json()
