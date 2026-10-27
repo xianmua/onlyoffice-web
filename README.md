@@ -57,7 +57,7 @@ docker run -d -p 8090:8090 -p 8089:80 --name onlyoffice onlyoffice-editor
 
 服务器上：
 
-1. 安装 [OnlyOffice Docs](https://www.onlyoffice.com/download-docs.aspx)（Windows 版 Community Edition），端口选 **8089**
+1. 安装 [OnlyOffice Docs](https://www.onlyoffice.com/download-docs.aspx)（Windows 版 Community Edition，**版本 9.4.0**——DS 升级可能不兼容本项目的 web-apps 补丁与插件行为）。装 Docker Desktop 的话也可直接 `docker run onlyoffice/documentserver:9.4.0`，与 Linux 部署完全一致
 2. 把 `dist-win/` 整体复制到服务器任意位置（如 `D:\ai-editor`）
 3. 复制 `frontend/server/.env.example` 为 `.env`，按需填 `AI_API_KEY`（AI 助手）。也可不填，启动后在面板齿轮设置里填，立即生效
 4. 双击 `ai-editor.exe`，看到 `listening on :8090` 即成功
@@ -72,8 +72,8 @@ docker run -d -p 8090:8090 -p 8089:80 --name onlyoffice onlyoffice-editor
 只需 Docker 跑 OnlyOffice，前端用 Vite 热更新调试：
 
 ```bash
-# 1. 启动 OnlyOffice（映射到 8089）
-docker run -d -p 8089:80 --name onlyoffice-dev onlyoffice/documentserver
+# 1. 启动 OnlyOffice（版本锁定 9.4.0，与 Dockerfile/patch 脚本对齐）
+docker run -d -p 8089:80 --name onlyoffice-dev onlyoffice/documentserver:9.4.0
 
 # 2. 启动前端开发服务器（端口 8090）
 cd frontend

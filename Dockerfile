@@ -12,8 +12,8 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# 阶段 2: OnlyOffice 运行时
-FROM onlyoffice/documentserver:latest
+# 阶段 2: OnlyOffice 运行时（版本锁定 9.4.0：DS 升级可能破坏 web-apps 补丁锚点与插件行为，勿随意变更）
+FROM onlyoffice/documentserver:9.4.0
 
 # 前端产物 + 项目根 plugins/（Docker 无 node 后端，App.vue 走内置 fallback 列表）
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
