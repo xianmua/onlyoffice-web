@@ -4,6 +4,7 @@
 //       POST /api/context、POST|GET /api/session、GET /api/health
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { PROTOCOL_PROMPT } from './prompt.mjs'
 
 const AI_API_URL = (process.env.AI_API_URL || '').trim()
 // 剥掉用户粘贴时可能带上的 /v1 或 /v1beta1 /v2 /openai 这种"版本尾巴"，
@@ -22,7 +23,6 @@ function maskKey(k) {
 }
 
 export function register(ctx) {
-  const PROTOCOL_PROMPT = ctx.prompt
   const { cors, readBody, pushLog, tryParseActions, memory, docContext } = ctx
 
   // === 运行时设置：插件设置面板保存的覆盖值（.settings.json 不进 git） ===
@@ -42,7 +42,7 @@ export function register(ctx) {
     }
   }
 
-  // 系统提示词独立在 prompt.mjs（新增动作先改那边的协议，再到 plugin.js 加写入函数）
+  // 系统提示词在同目录 prompt.mjs（新增动作先改那边的协议，再到 plugin.js 加写入函数）
   function buildSystemPrompt(docText) {
     const cfg = effectiveConfig()
     let s = PROTOCOL_PROMPT

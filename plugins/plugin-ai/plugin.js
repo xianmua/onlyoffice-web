@@ -665,6 +665,7 @@
     const text = inp.value.trim()
     if (!text || !apiReady || busy) return
     inp.value = ''
+    inp.style.height = ''  // 立即恢复 1 行高（不等 AI 回复完）
     sendBtn.disabled = true
     busy = true
     bubble('user', text)
@@ -744,7 +745,8 @@
     })
     inp.addEventListener('input', function () {
       inp.style.height = 'auto'
-      inp.style.height = Math.min(inp.scrollHeight, 140) + 'px'
+      // border-box 下 height 含 padding+border，scrollHeight 只含 padding，补 2px 边框
+      inp.style.height = Math.min(inp.scrollHeight + 2, 140) + 'px'
     })
     setTimeout(function () { inp.focus() }, 500)
   }
